@@ -17,15 +17,44 @@ supabase = create_client(
     os.getenv("SUPABASE_KEY")
 )
 
-def download_from_drive(file_id):
+# ─── CRUCIAL AUTOMATION SETTING ─────────────────────────────────────
+# PASTE YOUR COPIED GOOGLE DRIVE FOLDER ID BETWEEN THE QUOTES BELOW:
+FOLDER_ID = "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6"
+# ───────────────────────────────────────────────────────────────────
+
+def get_latest_file_from_drive():
     try:
-        # Load your cloud service account tokens securely
-        creds = Credentials.from_service_account_info(
-            eval(os.getenv("GOOGLE_CREDS"))
-        )
+        creds = Credentials.from_service_account_info(eval(os.getenv("GOOGLE_CREDS")))
         service = build('drive', 'v3', credentials=creds)
         
-        # Pull streaming file binary blocks out from Google Drive
+        # Automatically search the folder for images, sorted by newest created date
+        query = f"'{FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false"
+        results = service.files().list(
+            q=query,
+            orderBy="createdTime desc",
+            pageSize=1,
+            fields="files(id, name)"
+        ).execute()
+        
+        files = results.get('files', [])
+        if not files:
+            print("No images found in the Google Drive folder.")
+            return None, None
+            
+        latest_file = files[0]
+        print(f"✨ Automatically found the newest image: {latest_file['name']} (ID: {latest_file['id']})")
+        return latest_file['id'], latest_file['name']
+    except Exception as e:
+        print(f"Error scanning Google Drive folder: {str(e)}")
+        return None, None
+
+def download_from_drive(file_id):
+    if not file_id:
+        return None
+    try:
+        creds = Credentials.from_service_account_info(eval(os.getenv("GOOGLE_CREDS")))
+        service = build('drive', 'v3', credentials=creds)
+        
         request = service.files().get_media(fileId=file_id)
         file_data = io.BytesIO()
         downloader = MediaIoBaseDownload(file_data, request)
@@ -35,17 +64,14 @@ def download_from_drive(file_id):
             status, done = downloader.next_chunk()
             print(f"Download Progress: {int(status.progress() * 100)}%")
             
-        print("--- SUCCESS! DOWNLOADED MEDIA FILE FROM GOOGLE DRIVE ---")
+        print("--- SUCCESS! DOWNLOADED LATEST MEDIA FILE FROM DRIVE ---")
         return file_data.getvalue()
     except Exception as e:
-        print(f"Google Drive Download Error (Ensure file ID is real and shared with service account): {str(e)}")
+        print(f"Google Drive Download Error: {str(e)}")
         return None
 
 def generate_script():
-    # Initialize the modern free Google AI client
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    
-    # Retry loop to push past temporary free tier high-demand spikes
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -60,32 +86,35 @@ Tone: Engaging"""
             return response.text
         except Exception as e:
             if "503" in str(e) and attempt < max_retries - 1:
-                print(f"Model busy (Spike in demand). Retrying in 5 seconds... (Attempt {attempt + 1}/{max_retries})")
+                print(f"Model busy. Retrying in 5 seconds... ({attempt + 1}/{max_retries})")
                 time.sleep(5)
                 continue
             print(f"AI Generation Error: {str(e)}")
             raise e
 
 if __name__ == "__main__":
-    # Test file ID placeholder for your automation pipeline
-    SAMPLE_FILE_ID = "1abc123XYZ_placeholder_id"
+    # 1. Automatically hunt for the newest photo in your shared folder
+    file_id, file_name = get_latest_file_from_drive()
     
-    # 1. Download asset file
-    media_bytes = download_from_drive(SAMPLE_FILE_ID)
-    
-    # 2. Build the marketing script
-    generated_text = generate_script()
-    print("Generated Script Output:\n", generated_text)
-    
-    # 3. Insert metadata records straight into your data tracking matrix
-    try:
-        response = supabase.table("kurti_jobs").insert({
-            "product_name": "Kurti",
-            "sizes": "S, M, L, XL",
-            "prices": "₹299-₹599",
-            "status": "completed",
-            "video_url": generated_text
-        }).execute()
-        print("--- SUCCESS! CACHED TRANSACTION ENTRY TO DATABASE ---")
-    except Exception as e:
-        print(f"Database Save Error: {str(e)}")
+    if file_id:
+        # 2. Download the found photo dynamically
+        media_bytes = download_from_drive(file_id)
+        
+        # 3. Build the marketing script
+        generated_text = generate_script()
+        print("Generated Script Output:\n", generated_text)
+        
+        # 4. Insert data into your Supabase grid tracking system
+        try:
+            response = supabase.table("kurti_jobs").insert({
+                "product_name": f"Kurti - {file_name}",  # Saves the actual image filename!
+                "sizes": "S, M, L, XL",
+                "prices": "₹299-₹599",
+                "status": "completed",
+                "video_url": generated_text
+            }).execute()
+            print("--- SUCCESS! CACHED TRANSACTION ENTRY TO DATABASE ---")
+        except Exception as e:
+            print(f"Database Save Error: {str(e)}")
+    else:
+        print("Automation halted: No source image could be pulled.")
