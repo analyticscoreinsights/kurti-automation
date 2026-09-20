@@ -28,5 +28,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GOOGLE_CREDS: ${{ secrets.GOOGLE_CREDS }}
         run: python main.py
+
 
