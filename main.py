@@ -17,7 +17,7 @@ supabase = create_client(
     os.getenv("SUPABASE_KEY")
 )
 
-# ─── CRUCIAL AUTOMATION SETTING ─────────────────────────────────────
+# ─── 100% HANDS-FREE AUTOMATION SETTING ──────────────────────────────
 # PASTE YOUR COPIED GOOGLE DRIVE FOLDER ID BETWEEN THE QUOTES BELOW:
 FOLDER_ID = "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6"
 # ───────────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ def get_latest_file_from_drive():
         creds = Credentials.from_service_account_info(eval(os.getenv("GOOGLE_CREDS")))
         service = build('drive', 'v3', credentials=creds)
         
-        # Automatically search the folder for images, sorted by newest created date
+        # Scan the folder for images, sorted by newest created date automatically
         query = f"'{FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false"
         results = service.files().list(
             q=query,
@@ -42,7 +42,7 @@ def get_latest_file_from_drive():
             return None, None
             
         latest_file = files[0]
-        print(f"✨ Automatically found the newest image: {latest_file['name']} (ID: {latest_file['id']})")
+        print(f"✨ Automatically detected the newest image: {latest_file['name']} (ID: {latest_file['id']})")
         return latest_file['id'], latest_file['name']
     except Exception as e:
         print(f"Error scanning Google Drive folder: {str(e)}")
@@ -70,18 +70,14 @@ def download_from_drive(file_id):
         print(f"Google Drive Download Error: {str(e)}")
         return None
 
-def generate_script():
+def generate_script(product, sizes, prices):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
                 model='gemini-3.6-flash',
-                contents="""Create 60-word Instagram script for:
-Product: Kurti
-Sizes: S, M, L, XL
-Prices: ₹299-₹599
-Tone: Engaging"""
+                contents=f"Create an engaging 60-word Instagram script for a product promotion: {product}, Sizes: {sizes}, Prices: {prices}. Include relevant hooks and call to actions."
             )
             return response.text
         except Exception as e:
@@ -93,21 +89,21 @@ Tone: Engaging"""
             raise e
 
 if __name__ == "__main__":
-    # 1. Automatically hunt for the newest photo in your shared folder
+    # 1. Automatically hunt for the newest photo in your shared folder without manual secrets
     file_id, file_name = get_latest_file_from_drive()
     
     if file_id:
         # 2. Download the found photo dynamically
         media_bytes = download_from_drive(file_id)
         
-        # 3. Build the marketing script
-        generated_text = generate_script()
+        # 3. Build the marketing script utilizing inputs dynamically
+        generated_text = generate_script("Kurti", "S, M, L, XL", "₹299-₹599")
         print("Generated Script Output:\n", generated_text)
         
-        # 4. Insert data into your Supabase grid tracking system
+        # 4. Insert dynamic columns straight into your Supabase database structure
         try:
             response = supabase.table("kurti_jobs").insert({
-                "product_name": f"Kurti - {file_name}",  # Saves the actual image filename!
+                "product_name": f"Kurti - {file_name}",  # Track which exact file this script is for
                 "sizes": "S, M, L, XL",
                 "prices": "₹299-₹599",
                 "status": "completed",
@@ -117,4 +113,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Database Save Error: {str(e)}")
     else:
-        print("Automation halted: No source image could be pulled.")
+        print("Automation halted: No source image could be pulled from your shared folder.")
