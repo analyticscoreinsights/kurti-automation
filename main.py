@@ -12,7 +12,7 @@ def process_kurti():
         
         # Generate the script using the free Gemini model
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents="""Create 60-word Instagram script for:
 Product: Kurti
 Sizes: S, M, L, XL
