@@ -1,27 +1,30 @@
-from flask import Flask
-import anthropic
 import os
+from dotenv import load_dotenv
+from flask import Flask
+from google import genai
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+# Initialize the free Google client
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 @app.route('/process', methods=['POST'])
 def process_kurti():
     try:
-        response = claude.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=150,
-            messages=[{
-                "role": "user",
-                "content": """Create 60-word Instagram script for:
+        # Generate the script using the updated free Gemini model
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents="""Create 60-word Instagram script for:
 Product: Kurti
 Sizes: S, M, L, XL
 Prices: ₹299-₹599
 Tone: Engaging"""
-            }]
         )
-        script = response.content[0].text
-        return {"status": "success", "script": script}, 200
+        
+        return {"status": "success", "script": response.text}, 200
     except Exception as e:
         return {"error": str(e)}, 500
 
