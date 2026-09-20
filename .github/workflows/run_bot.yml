@@ -25,5 +25,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GOOGLE_CREDS: ${{ secrets.GOOGLE_CREDS }} # Connects your Google Drive securely
+          GOOGLE_CREDS: ${{ secrets.GOOGLE_CREDS }}
+          DRIVE_FILE_ID: ${{ secrets.DRIVE_FILE_ID }} # <-- Make sure this line is added!
         run: python main.py
+
