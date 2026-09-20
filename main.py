@@ -24,7 +24,6 @@ def get_latest_file_from_drive():
         creds = Credentials.from_service_account_info(eval(os.getenv("GOOGLE_CREDS")))
         service = build('drive', 'v3', credentials=creds)
         
-        # Scan the folder for images, sorted by newest created date automatically
         query = f"'{FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false"
         results = service.files().list(
             q=query,
@@ -69,35 +68,38 @@ def fetch_photo_from_drive(file_id):
 
 def generate_script(product, sizes, prices):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=f"Create an engaging 60-word Instagram script for a product promotion: {product}, Sizes: {sizes}, Prices: {prices}. Include relevant hooks and call to actions."
-            )
-            return response.text
-        except Exception as e:
-            if "503" in str(e) and attempt < max_retries - 1:
-                print(f"Model busy. Retrying in 5 seconds... ({attempt + 1}/{max_retries})")
-                time.sleep(5)
-                continue
-            print(f"AI Generation Error: {str(e)}")
-            raise e
+    
+    # Using the latest live 2026 models (3.8 is primary, 3.6 is stable backup)
+    models_to_try = ['gemini-3.8-flash', 'gemini-3.6-flash']
+    
+    for model_name in models_to_try:
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                print(f"Attempting to generate script using model: {model_name}...")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=f"Create an engaging 60-word Instagram script for a product promotion: {product}, Sizes: {sizes}, Prices: {prices}. Include relevant hooks, emojis, and call to actions."
+                )
+                return response.text
+            except Exception as e:
+                if "503" in str(e) and attempt < max_retries - 1:
+                    print(f"Model {model_name} busy. Retrying in 5 seconds... ({attempt + 1}/{max_retries})")
+                    time.sleep(5)
+                    continue
+                print(f"Failed with {model_name}: {str(e)}")
+                break # Break inner loop to try the fallback model
+                
+    raise RuntimeError("All available free Google AI models are currently overloaded. Please try running again in a few minutes.")
 
 if __name__ == "__main__":
-    # 1. Automatically hunt for the newest photo in your shared folder dynamically!
     file_id, file_name = get_latest_file_from_drive()
     
     if file_id:
-        # 2. Fetch/Download the dynamically discovered photo
         photo = fetch_photo_from_drive(file_id)
-        
-        # 3. Generate the creative marketing text copy
         script = generate_script("Kurti", "S, M, L, XL", "₹299-₹599")
         print("Generated Script Output:\n", script)
         
-        # 4. Save the finalized details into Supabase (tracking the real filename!)
         try:
             response = supabase.table("kurti_jobs").insert({
                 "product_name": f"Kurti - {file_name}",
