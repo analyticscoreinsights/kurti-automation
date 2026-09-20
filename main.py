@@ -18,7 +18,7 @@ supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 # ─── 100% AUTOMATION SETTING ────────────────────────────────────────
 # PASTE YOUR COPIED GOOGLE DRIVE FOLDER ID BETWEEN THE QUOTES BELOW:
-FOLDER_ID = "PASTE_YOUR_DRIVE_FOLDER_ID_HERE"
+FOLDER_ID = "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6"
 # ───────────────────────────────────────────────────────────────────
 
 def get_latest_file_from_drive():
