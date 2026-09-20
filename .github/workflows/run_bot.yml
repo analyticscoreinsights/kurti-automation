@@ -22,7 +22,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install Flask python-dotenv google-genai
 
+      
       - name: Run Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python main.py
+
