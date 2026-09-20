@@ -12,12 +12,9 @@ from supabase import create_client
 load_dotenv()
 
 # Initialize the active Supabase Client
-supabase = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_KEY")
-)
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-# ─── 100% HANDS-FREE AUTOMATION SETTING ──────────────────────────────
+# ─── 100% AUTOMATION SETTING ────────────────────────────────────────
 # PASTE YOUR COPIED GOOGLE DRIVE FOLDER ID BETWEEN THE QUOTES BELOW:
 FOLDER_ID = "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6"
 # ───────────────────────────────────────────────────────────────────
@@ -48,14 +45,14 @@ def get_latest_file_from_drive():
         print(f"Error scanning Google Drive folder: {str(e)}")
         return None, None
 
-def download_from_drive(file_id):
+def fetch_photo_from_drive(file_id):
     if not file_id:
         return None
     try:
         creds = Credentials.from_service_account_info(eval(os.getenv("GOOGLE_CREDS")))
-        service = build('drive', 'v3', credentials=creds)
+        drive = build('drive', 'v3', credentials=creds)
         
-        request = service.files().get_media(fileId=file_id)
+        request = drive.files().get_media(fileId=file_id)
         file_data = io.BytesIO()
         downloader = MediaIoBaseDownload(file_data, request)
         
@@ -64,7 +61,7 @@ def download_from_drive(file_id):
             status, done = downloader.next_chunk()
             print(f"Download Progress: {int(status.progress() * 100)}%")
             
-        print("--- SUCCESS! DOWNLOADED LATEST MEDIA FILE FROM DRIVE ---")
+        print("--- SUCCESS! DOWNLOADED PHOTO FROM GOOGLE DRIVE ---")
         return file_data.getvalue()
     except Exception as e:
         print(f"Google Drive Download Error: {str(e)}")
@@ -89,28 +86,28 @@ def generate_script(product, sizes, prices):
             raise e
 
 if __name__ == "__main__":
-    # 1. Automatically hunt for the newest photo in your shared folder without manual secrets
+    # 1. Automatically hunt for the newest photo in your shared folder dynamically!
     file_id, file_name = get_latest_file_from_drive()
     
     if file_id:
-        # 2. Download the found photo dynamically
-        media_bytes = download_from_drive(file_id)
+        # 2. Fetch/Download the dynamically discovered photo
+        photo = fetch_photo_from_drive(file_id)
         
-        # 3. Build the marketing script utilizing inputs dynamically
-        generated_text = generate_script("Kurti", "S, M, L, XL", "₹299-₹599")
-        print("Generated Script Output:\n", generated_text)
+        # 3. Generate the creative marketing text copy
+        script = generate_script("Kurti", "S, M, L, XL", "₹299-₹599")
+        print("Generated Script Output:\n", script)
         
-        # 4. Insert dynamic columns straight into your Supabase database structure
+        # 4. Save the finalized details into Supabase (tracking the real filename!)
         try:
             response = supabase.table("kurti_jobs").insert({
-                "product_name": f"Kurti - {file_name}",  # Track which exact file this script is for
+                "product_name": f"Kurti - {file_name}",
                 "sizes": "S, M, L, XL",
                 "prices": "₹299-₹599",
                 "status": "completed",
-                "video_url": generated_text
+                "video_url": script
             }).execute()
-            print("--- SUCCESS! CACHED TRANSACTION ENTRY TO DATABASE ---")
+            print("--- SUCCESS! TRANSACTION COMMITTED TO SUPABASE DATABASE ---")
         except Exception as e:
             print(f"Database Save Error: {str(e)}")
     else:
-        print("Automation halted: No source image could be pulled from your shared folder.")
+        print("Automation halted: No source image could be pulled from the shared folder.")
