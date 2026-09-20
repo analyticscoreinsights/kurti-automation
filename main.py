@@ -10,7 +10,7 @@ def process_kurti():
         # Initialize the free Google client
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         
-        # Generate the script using the updated free Gemini model
+        # Generate the script using the free Gemini model
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents="""Create 60-word Instagram script for:
