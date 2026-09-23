@@ -1,6 +1,7 @@
 import io
 import os
 import time
+import requests
 from dotenv import load_dotenv
 from google import genai
 from google.oauth2.service_account import Credentials
@@ -17,7 +18,6 @@ load_dotenv()
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 # ─── 100% AUTOMATION SETTING ────────────────────────────────────────
-# PASTE YOUR COPIED GOOGLE DRIVE FOLDER ID BETWEEN THE QUOTES BELOW:
 FOLDER_ID = "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6"
 # ───────────────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ def fetch_photo_from_drive(file_id):
 def generate_script(product, sizes, prices):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     
-    # 2026 Production-Ready Live Models (3.8 is primary, 3.7/3.6 are backups)
+    # Active Gemini models
     models_to_try = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
     
     for model_name in models_to_try:
@@ -96,9 +96,8 @@ def generate_script(product, sizes, prices):
 
 def text_to_speech_free(text, output_filename="/tmp/audio.mp3"):
     try:
-        # Generate the voice narration completely for free using gTTS
         print("Generating free text-to-speech audio narration...")
-        tts = gTTS(text=text, lang='en', tld='co.in') # Uses a professional Indian English voice option
+        tts = gTTS(text=text, lang='en', tld='co.in')
         tts.save(output_filename)
         print("--- SUCCESS! GENERATED FREE AUDIO CAPTION FILE ---")
         return output_filename
@@ -113,14 +112,12 @@ def create_video_free(photo_bytes, audio_path, output_video_path="/tmp/output.mp
         with open(photo_path, "wb") as f:
             f.write(photo_bytes)
             
-        # Initialize video duration matching the length of the audio file exactly
         audio_clip = AudioFileClip(audio_path)
         video_duration = audio_clip.duration
         
         image_clip = ImageClip(photo_path).set_duration(video_duration)
         video_clip = image_clip.set_audio(audio_clip)
         
-        # Build the final mp4 container
         video_clip.write_videofile(
             output_video_path, 
             fps=24, 
@@ -130,7 +127,6 @@ def create_video_free(photo_bytes, audio_path, output_video_path="/tmp/output.mp
             logger=None
         )
         
-        # Clean up memory buffers safely
         audio_clip.close()
         video_clip.close()
         
@@ -138,6 +134,58 @@ def create_video_free(photo_bytes, audio_path, output_video_path="/tmp/output.mp
         return output_video_path
     except Exception as e:
         print(f"Video Generation Error: {str(e)}")
+        return None
+
+def upload_to_instagram(video_path, caption):
+    try:
+        token = os.getenv("INSTAGRAM_TOKEN")
+        account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+        
+        if not token or not account_id:
+            print("Instagram credentials missing. Skipping upload.")
+            return None
+            
+        print(f"Uploading video container to Instagram Account ID: {account_id}")
+        
+        # Step 1: Create media container
+        url = f"https://graph.facebook.com/v19.0/{account_id}/media"
+        payload = {
+            "media_type": "REELS",
+            "caption": caption,
+            "access_token": token
+        }
+        
+        with open(video_path, 'rb') as video_file:
+            files = {'file': video_file}
+            response = requests.post(url, data=payload, files=files)
+            result = response.json()
+            
+        if "id" in result:
+            creation_id = result["id"]
+            print(f"Container created. Container ID: {creation_id}")
+            
+            # Step 2: Publish media container
+            publish_url = f"https://graph.facebook.com/v19.0/{account_id}/media_publish"
+            publish_payload = {
+                "creation_id": creation_id,
+                "access_token": token
+            }
+            
+            publish_response = requests.post(publish_url, data=publish_payload)
+            publish_result = publish_response.json()
+            
+            if "id" in publish_result:
+                print(f"✅ SUCCESS! Posted to Instagram. Media ID: {publish_result['id']}")
+                return publish_result['id']
+            else:
+                print(f"❌ Publishing failed: {publish_result}")
+                return None
+        else:
+            print(f"❌ Container creation failed: {result}")
+            return None
+            
+    except Exception as e:
+        print(f"Instagram Upload Error: {str(e)}")
         return None
 
 if __name__ == "__main__":
@@ -149,22 +197,25 @@ if __name__ == "__main__":
         print("Generated Script Output:\n", script)
         
         if photo_bytes and script:
-            # 1. Generate Voice Audio File (Free)
+            # 1. Generate Voice Audio File
             audio_file = text_to_speech_free(script)
             
             if audio_file:
-                # 2. Render Video (Free)
+                # 2. Render Video
                 video_file = create_video_free(photo_bytes, audio_file)
                 
-                # 3. Save Finished Tracking Record to Supabase
+                # 3. Post to Instagram & Save Track Record to Supabase
                 if video_file:
+                    caption = f"{script}\n\n#Kurti #Fashion #WomenClothing #Shopping #IndianFashion"
+                    ig_post_id = upload_to_instagram(video_file, caption)
+                    
                     try:
                         response = supabase.table("kurti_jobs").insert({
                             "product_name": f"Kurti - {file_name}",
                             "sizes": "S, M, L, XL",
                             "prices": "₹299-₹599",
                             "status": "completed",
-                            "video_url": "video_generated_free_tier"
+                            "video_url": f"https://instagram.com/p/{ig_post_id}" if ig_post_id else "video_generated_free_tier"
                         }).execute()
                         print("--- SUCCESS! TRANSACTION COMMITTED TO SUPABASE DATABASE ---")
                     except Exception as e:
