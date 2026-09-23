@@ -115,8 +115,9 @@ def create_video_free(photo_bytes, audio_path, output_video_path="/tmp/output.mp
         audio_clip = AudioFileClip(audio_path)
         video_duration = audio_clip.duration
         
-        image_clip = ImageClip(photo_path).set_duration(video_duration)
-        video_clip = image_clip.set_audio(audio_clip)
+        # Updated MoviePy v2 syntax (with_duration & with_audio)
+        image_clip = ImageClip(photo_path).with_duration(video_duration)
+        video_clip = image_clip.with_audio(audio_clip)
         
         video_clip.write_videofile(
             output_video_path, 
