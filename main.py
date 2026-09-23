@@ -150,14 +150,14 @@ def upload_to_instagram(video_path, caption):
         file_name = f"kurti_{int(time.time())}.mp4"
         
         with open(video_path, 'rb') as f:
-            supabase.storage.from_('videos').upload(
+            supabase.storage.from_('Videos').upload(
                 path=file_name,
                 file=f,
                 file_options={"content-type": "video/mp4"}
             )
         
         # Step 2: Retrieve the public accessible URL
-        video_url = supabase.storage.from_('videos').get_public_url(file_name)
+        video_url = supabase.storage.from_('Videos').get_public_url(file_name)
         print(f"Video hosted at: {video_url}")
         
         # Step 3: Create Media Container on Instagram
