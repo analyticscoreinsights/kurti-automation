@@ -115,16 +115,16 @@ def create_video_free(photo_bytes, audio_path, output_video_path="/tmp/output.mp
         audio_clip = AudioFileClip(audio_path)
         video_duration = audio_clip.duration
         
-        # Updated MoviePy v2 syntax (with_duration & with_audio)
+        # MoviePy v2 syntax
         image_clip = ImageClip(photo_path).with_duration(video_duration)
         video_clip = image_clip.with_audio(audio_clip)
         
+        # Removed unsupported 'verbose' parameter
         video_clip.write_videofile(
             output_video_path, 
             fps=24, 
             codec="libx264", 
             audio_codec="aac", 
-            verbose=False, 
             logger=None
         )
         
