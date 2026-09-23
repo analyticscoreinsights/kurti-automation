@@ -10,3 +10,5 @@ Pillow
 gTTS
 requests
 elevenlabs
+numpy
+imageio
