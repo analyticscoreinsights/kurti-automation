@@ -71,8 +71,8 @@ def fetch_photo_from_drive(file_id):
 def generate_script(product, sizes, prices):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     
-    # Active Gemini models
-    models_to_try = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
+    # Active production models
+    models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash']
     
     for model_name in models_to_try:
         max_retries = 3
@@ -115,11 +115,10 @@ def create_video_free(photo_bytes, audio_path, output_video_path="/tmp/output.mp
         audio_clip = AudioFileClip(audio_path)
         video_duration = audio_clip.duration
         
-        # MoviePy v2 syntax
+        # Updated MoviePy v2 syntax
         image_clip = ImageClip(photo_path).with_duration(video_duration)
         video_clip = image_clip.with_audio(audio_clip)
         
-        # Removed unsupported 'verbose' parameter
         video_clip.write_videofile(
             output_video_path, 
             fps=24, 
@@ -145,27 +144,44 @@ def upload_to_instagram(video_path, caption):
         if not token or not account_id:
             print("Instagram credentials missing. Skipping upload.")
             return None
-            
-        print(f"Uploading video container to Instagram Account ID: {account_id}")
         
-        # Step 1: Create media container
+        # Step 1: Upload video file to Supabase Storage
+        print("Uploading video to cloud storage...")
+        file_name = f"kurti_{int(time.time())}.mp4"
+        
+        with open(video_path, 'rb') as f:
+            supabase.storage.from_('videos').upload(
+                path=file_name,
+                file=f,
+                file_options={"content-type": "video/mp4"}
+            )
+        
+        # Step 2: Retrieve the public accessible URL
+        video_url = supabase.storage.from_('videos').get_public_url(file_name)
+        print(f"Video hosted at: {video_url}")
+        
+        # Step 3: Create Media Container on Instagram
+        print(f"Creating Reel Container for Instagram Account: {account_id}")
         url = f"https://graph.facebook.com/v19.0/{account_id}/media"
         payload = {
             "media_type": "REELS",
+            "video_url": video_url,
             "caption": caption,
             "access_token": token
         }
         
-        with open(video_path, 'rb') as video_file:
-            files = {'file': video_file}
-            response = requests.post(url, data=payload, files=files)
-            result = response.json()
-            
+        response = requests.post(url, data=payload)
+        result = response.json()
+        
         if "id" in result:
             creation_id = result["id"]
-            print(f"Container created. Container ID: {creation_id}")
+            print(f"Container created successfully. Container ID: {creation_id}")
             
-            # Step 2: Publish media container
+            # Step 4: Wait for Instagram to finish processing the video from Supabase
+            print("Waiting 30 seconds for Instagram to process the video...")
+            time.sleep(30)
+            
+            # Step 5: Publish Container to Profile
             publish_url = f"https://graph.facebook.com/v19.0/{account_id}/media_publish"
             publish_payload = {
                 "creation_id": creation_id,
@@ -176,17 +192,17 @@ def upload_to_instagram(video_path, caption):
             publish_result = publish_response.json()
             
             if "id" in publish_result:
-                print(f"✅ SUCCESS! Posted to Instagram. Media ID: {publish_result['id']}")
+                print(f"✅ SUCCESS! Posted to Instagram. Published Media ID: {publish_result['id']}")
                 return publish_result['id']
             else:
-                print(f"❌ Publishing failed: {publish_result}")
+                print(f"❌ Publishing Failed: {publish_result}")
                 return None
         else:
-            print(f"❌ Container creation failed: {result}")
+            print(f"❌ Container Creation Failed: {result}")
             return None
             
     except Exception as e:
-        print(f"Instagram Upload Error: {str(e)}")
+        print(f"Error during Instagram upload process: {str(e)}")
         return None
 
 if __name__ == "__main__":
@@ -205,7 +221,7 @@ if __name__ == "__main__":
                 # 2. Render Video
                 video_file = create_video_free(photo_bytes, audio_file)
                 
-                # 3. Post to Instagram & Save Track Record to Supabase
+                # 3. Post to Instagram & Save Record to Supabase
                 if video_file:
                     caption = f"{script}\n\n#Kurti #Fashion #WomenClothing #Shopping #IndianFashion"
                     ig_post_id = upload_to_instagram(video_file, caption)
