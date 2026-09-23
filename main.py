@@ -72,10 +72,10 @@ def generate_script(product, sizes, prices):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     
     # Active production models
-    models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
+    models_to_try = [ 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash','gemini-2.5-flash', 'gemini-2.0-flash]
     
     for model_name in models_to_try:
-        max_retries = 3
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 print(f"Attempting to generate script using model: {model_name}...")
