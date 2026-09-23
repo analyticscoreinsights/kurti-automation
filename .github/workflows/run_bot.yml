@@ -26,6 +26,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           GOOGLE_CREDS: ${{ secrets.GOOGLE_CREDS }}
-          DRIVE_FILE_ID: ${{ secrets.DRIVE_FILE_ID }} # <-- Make sure this line is added!
+          DRIVE_FILE_ID: ${{ secrets.DRIVE_FILE_ID }} 
+          INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
         run: python main.py
 
