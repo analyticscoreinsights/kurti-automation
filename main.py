@@ -90,7 +90,7 @@ def generate_storytelling_script():
     """
     
     for model_name in models_to_try:
-        max_retries = 5
+        max_retries = 10
         for attempt in range(max_retries):
             try:
                 print(f"Generating story script using model: {model_name}...")
@@ -102,7 +102,7 @@ def generate_storytelling_script():
             except Exception as e:
                 if "503" in str(e) and attempt < max_retries - 1:
                     print(f"Model {model_name} busy. Retrying... ({attempt + 1}/{max_retries})")
-                    time.sleep(5)
+                    time.sleep(20)
                     continue
                 print(f"Failed with {model_name}: {str(e)}")
                 break
@@ -253,9 +253,30 @@ def upload_to_instagram(video_path, caption):
             creation_id = result["id"]
             print(f"Container created successfully. Container ID: {creation_id}")
             
-            print("Waiting 30 seconds for Instagram to process the video...")
-            time.sleep(30)
+            # ─── POLLING CONTAINER STATUS ───────────────────────────────────
+            print("Checking Instagram video processing status...")
+            status_url = f"https://graph.facebook.com/v19.0/{creation_id}?fields=status_code&access_token={token}"
             
+            max_attempts = 15
+            for attempt in range(max_attempts):
+                status_res = requests.get(status_url).json()
+                status_code = status_res.get("status_code")
+                
+                print(f"Processing Status ({attempt + 1}/{max_attempts}): {status_code}")
+                
+                if status_code == "FINISHED":
+                    print("✅ Instagram finished video processing!")
+                    break
+                elif status_code == "ERROR":
+                    print(f"❌ Instagram video processing failed: {status_res}")
+                    return None
+                    
+                time.sleep(30)  # Wait 10 seconds between status checks
+            else:
+                print("❌ Processing timed out on Instagram servers.")
+                return None
+            # ────────────────────────────────────────────────────────────────
+
             publish_url = f"https://graph.facebook.com/v19.0/{account_id}/media_publish"
             publish_payload = {
                 "creation_id": creation_id,
@@ -278,7 +299,6 @@ def upload_to_instagram(video_path, caption):
     except Exception as e:
         print(f"Error during Instagram upload process: {str(e)}")
         return None
-
 if __name__ == "__main__":
     file_id, file_name = get_latest_file_from_drive()
     
