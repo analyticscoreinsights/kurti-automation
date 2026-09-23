@@ -17,11 +17,11 @@ from moviepy import ImageClip, AudioFileClip
 # Load environment configuration variables
 load_dotenv()
 
-# Initialize the active Supabase Client
+# Initialize active Supabase Client
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-# ─── 100% AUTOMATION SETTING ────────────────────────────────────────
-FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6")
+# ─── DIRECT HARDCODED DRIVE FOLDER ID ───────────────────────────────
+FOLDER_ID = "1LI-M9XuMXmNRrS4pSuvCf3nlAgUO7Na6"
 # ───────────────────────────────────────────────────────────────────
 
 def get_latest_file_from_drive():
@@ -39,7 +39,7 @@ def get_latest_file_from_drive():
         
         files = results.get('files', [])
         if not files:
-            print("No images found in the Google Drive folder.")
+            print("No images found in Google Drive folder.")
             return None, None
             
         latest_file = files[0]
@@ -107,10 +107,10 @@ def generate_storytelling_script():
                 print(f"Failed with {model_name}: {str(e)}")
                 break
                 
-    return "Jab bhi urgent outiing ya office ke liye ready hona ho, yeh designer Kurti aapki pehli choice banegi. Lightweight, stylish aur super comfortable. Sizes S se XL tak, starting at ₹299. Comment 'KURTI' right now for direct buying link!"
+    return "Jab bhi urgent outing ya office ke liye ready hona ho, yeh designer Kurti aapki pehli choice banegi. Lightweight, stylish aur super comfortable. Sizes S se XL tak, starting at ₹299. Comment 'KURTI' right now for direct buying link!"
 
 def text_to_speech_elevenlabs(text, voice_id="1XNFRxE3WBB7iI0jnm7p", output_filename="/tmp/audio.mp3"):
-    """Generates high-fidelity Indian Hinglish speech with realistic emotion."""
+    """Generates high-fidelity Indian Hinglish speech using ElevenLabs."""
     try:
         api_key = os.getenv("ELEVENLABS_API_KEY")
         if not api_key:
@@ -128,7 +128,7 @@ def text_to_speech_elevenlabs(text, voice_id="1XNFRxE3WBB7iI0jnm7p", output_file
             "text": text,
             "model_id": "eleven_multilingual_v2",
             "voice_settings": {
-                "stability": 0.35,  # Lower stability allows more dynamic storytelling inflection
+                "stability": 0.35,
                 "similarity_boost": 0.85
             }
         }
@@ -158,22 +158,18 @@ def text_to_speech_free(text, output_filename="/tmp/audio.mp3"):
         return None
 
 def apply_cinematic_hd_zoom(clip, target_w=1080, target_h=1920, zoom_ratio=0.04):
-    """Resizes to 1080x1920 Vertical HD and adds high-quality motion zoom."""
+    """Resizes to 1080x1920 Vertical HD and applies high-quality motion zoom."""
     def zoom_effect(get_frame, t):
         raw_frame = get_frame(t)
         img = Image.fromarray(raw_frame)
         
-        # Calculate dynamic slow zoom expansion
         current_w = math.ceil(target_w * (1 + (zoom_ratio * t)))
         current_h = math.ceil(target_h * (1 + (zoom_ratio * t)))
         
         current_w += current_w % 2
         current_h += current_h % 2
         
-        # High quality LANCZOS resize
         img_resized = img.resize((current_w, current_h), Image.Resampling.LANCZOS)
-        
-        # Center crop back to exact HD 1080x1920
         left = math.ceil((current_w - target_w) / 2)
         top = math.ceil((current_h - target_h) / 2)
         img_cropped = img_resized.crop((left, top, target_w + left, target_h + top))
@@ -199,7 +195,7 @@ def create_high_quality_video(photo_bytes, audio_path, output_video_path="/tmp/o
         cinematic_clip = apply_cinematic_hd_zoom(image_clip, target_w=1080, target_h=1920)
         video_clip = cinematic_clip.with_audio(audio_clip)
         
-        # Render high-bitrate full HD video file
+        # Render high-bitrate full HD video
         video_clip.write_videofile(
             output_video_path, 
             fps=30, 
